@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PUNTO DE VENTA</title>
+</head>
+<body>
+    <style>
+        :root {
+            --color-fondo: #f0f2f5;
+            --color-texto: #333;
+            --color-primario: #3498db;
+            --color-secundario: #2c3e50;
+            --color-contenedor: white;
+            --color-borde: #bdc3c7;
+            --color-resumen: #ecf0f1;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--color-fondo);
+            margin: 0;
+            padding: 20px;
+            color: var(--color-texto);
+        }
+        .container {
+            background-color: var(--color-contenedor);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1, h2 {
+            color: var(--color-secundario);
+            margin-bottom: 20px;
+        }
+        input, button, select {
+            margin: 10px 0;
+            padding: 12px;
+            border: 1px solid var(--color-borde);
+            border-radius: 4px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background-color: var(--color-contenedor);
+            color: var(--color-texto);
+        }
+        input:focus, select:focus {
+            border-color: var(--color-primario);
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+        button {
+            background-color: var(--color-primario);
+            color: var(--color-contenedor);
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+        #resumenVenta, #historialVentas, #descuentos, #recargas {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: var(--color-resumen);
+            border-radius: 8px;
+        }
+        #resumenVenta h2, #historialVentas h2, #descuentos h2, #recargas h2 {
+            color: var(--color-secundario);
+            border-bottom: 2px solid var(--color-borde);
+            padding-bottom: 10px;
+        }
+        .enlace-externo {
+            color: var(--color-primario);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .enlace-externo:hover {
+            opacity: 0.8;
+        }
+    </style>
+    
+    <div class="container">
+        <h1>Punto de Venta - Papelería</h1>
+        <input type="text" id="producto" placeholder="Producto">
+        <input type="number" id="precio" placeholder="Precio">
+        <input type="number" id="cantidad" placeholder="Cantidad">
+        <input type="number" id="descuento" placeholder="Descuento (%)" min="0" max="100">
+        <button onclick="agregarProducto()">Agregar Producto</button>
+        <button onclick="finalizarVenta()">Finalizar Venta</button>
+        <button onclick="generarPDFGanancias()">Generar PDF de Ganancias</button>
+        
+        <div id="resumenVenta"></div>
+        <h2>Historial de Ventas</h2>
+        <div id="historialVentas"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        let ventaActual = [];
+        let historialVentas = [];
+
+        function agregarProducto() {
+            const producto = document.getElementById('producto').value;
+            const precio = parseFloat(document.getElementById('precio').value);
+            const cantidad = parseInt(document.getElementById('cantidad').value);
+            const descuento = parseFloat(document.getElementById('descuento').value) || 0;
+
+            if (producto && precio && cantidad) {
+                const precioConDescuento = precio * (1 - descuento / 100);
+                ventaActual.push({producto, precio: precioConDescuento, cantidad, descuento});
+                actualizarResumen();
+                limpiarCampos();
+            } else {
+                alert('Por favor, complete todos los campos.');
+            }
+        }
+
+        function finalizarVenta() {
+            if (ventaActual.length > 0) {
+                const total = ventaActual.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
+                historialVentas.push({items: ventaActual, total});
+                mostrarResumen(total);
+                actualizarHistorial();
+                ventaActual = [];
+                actualizarResumen();
+            } else {
+                alert('No hay productos en la venta actual.');
+            }
+        }
+
+        function actualizarResumen() {
+            const resumenElement = document.getElementById('resumenVenta');
+            resumenElement.innerHTML = '<h2>Venta Actual</h2>';
+            ventaActual.forEach(item => {
+                resumenElement.innerHTML += `<p>${item.producto} - Precio: $${item.precio.toFixed(2)} - Cantidad: ${item.cantidad} - Descuento: ${item.descuento}%</p>`;
+            });
+        }
+
+        function mostrarResumen(total) {
+            alert(`Venta finalizada. Total: $${total.toFixed(2)}`);
+        }
+
+        function actualizarHistorial() {
+            const historialElement = document.getElementById('historialVentas');
+            historialElement.innerHTML = '';
+            historialVentas.forEach((venta, index) => {
+                historialElement.innerHTML += `<p>Venta ${index + 1}: $${venta.total.toFixed(2)}</p>`;
+            });
+        }
+
+        function limpiarCampos() {
+            document.getElementById('producto').value = '';
+            document.getElementById('precio').value = '';
+            document.getElementById('cantidad').value = '';
+            document.getElementById('descuento').value = '';
+        }
+
+        function generarPDFGanancias() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            doc.text("Reporte de Ganancias", 20, 20);
+            
+            let totalGanancias = 0;
+            historialVentas.forEach((venta, index) => {
+                totalGanancias += venta.total;
+                doc.text(`Venta ${index + 1}: $${venta.total.toFixed(2)}`, 20, 30 + (index * 10));
+            });
+            
+            doc.text(`Total de Ganancias: $${totalGanancias.toFixed(2)}`, 20, 30 + (historialVentas.length * 10));
+            
+            doc.save("ganancias.pdf");
+        }
+        
+        function cambiarModo() {
+            document.body.classList.toggle('modo-oscuro');
+        }
+    </script>
+</body>
+</html>
